@@ -43,7 +43,7 @@ CUDA_VISIBLE_DEVICES=0 python test.py \
 ### Test Ensemble (Full FreqStack)
 
 ```bash
-python FreqStack/test.py
+python Ensemble_Learner/test.py
 ```
 
 The `test.py` script loads both branches and passes predictions to a MetaLearner that fuses outputs and evaluates performance on different perturbation conditions.

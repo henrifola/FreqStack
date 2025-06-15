@@ -9,9 +9,13 @@ from sklearn.metrics import accuracy_score
 
 from metalearner import MetaLearner
 
-sys.path.append('/home/ubuntu/Development/FreqNet_DeepfakeDetection')
-sys.path.append('/home/ubuntu/Development/LoalFreq')
-sys.path.append('/home/ubuntu/Development')
+# Base path resolution
+ENSEMBLE_ROOT = os.path.abspath(os.path.dirname(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(ENSEMBLE_ROOT, '..'))
+
+sys.path.append(os.path.join(PROJECT_ROOT, 'FreqNet_DeepfakeDetection'))
+sys.path.append(os.path.join(PROJECT_ROOT, 'LoalFreq'))
+sys.path.append(PROJECT_ROOT)
 
 from FreqNet_DeepfakeDetection.options.test_options import TestOptions as FreqNetOptions
 from FreqNet_DeepfakeDetection.networks.freqnet import freqnet
@@ -21,39 +25,43 @@ from LoalFreq.options.base_options import BaseOptions as LLNetOptions
 from LoalFreq.network.trainer import Trainer
 import LoalFreq.validate as validate_branch2
 
+def rel_path(*parts):
+    return os.path.join(PROJECT_ROOT, *parts)
 
 def load_branch1(opt):
     model = freqnet(num_classes=1)
-    state_dict = torch.load('/home/ubuntu/Development/FreqNet_DeepfakeDetection/checkpoints/experiment_name2025_05_29_04_13_40/model_epoch_last.pth', map_location='cpu')
+    state_dict = torch.load(
+        rel_path('FreqNet_DeepfakeDetection', 'checkpoints', 'experiment_name2025_05_29_04_13_40', 'model_epoch_last.pth'),
+        map_location='cpu'
+    )
     model.load_state_dict(state_dict)
-    model.cuda()
-    model.eval()
+    model.cuda().eval()
     return model
-
 
 def load_branch2(opt):
     trainer = Trainer(opt)
-    checkpoint = torch.load('/home/ubuntu/Development/LoalFreq/checkpoints/4class-llnet-car-cat-chair-horse-sgd_20250604_063140/epoch_60_model.pth', map_location='cpu')
+    checkpoint = torch.load(
+        rel_path('LoalFreq', 'checkpoints', '4class-llnet-car-cat-chair-horse-sgd_20250604_063140', 'epoch_60_model.pth'),
+        map_location='cpu'
+    )
     trainer.model.load_state_dict(checkpoint)
     model = trainer.model
-    model.cuda()
-    model.eval()
+    model.cuda().eval()
     return model
-
 
 def main():
     timestamp = time.strftime('%Y%m%d_%H%M%S')
-    save_dir = f'checkpoints_metalearner/{timestamp}'
+    save_dir = os.path.join(ENSEMBLE_ROOT, 'checkpoints_metalearner', timestamp)
     os.makedirs(save_dir, exist_ok=True)
 
     freq_opt = FreqNetOptions().parse(print_options=False)
-    freq_opt.dataroot = '/home/ubuntu/Development/FreqNet_DeepfakeDetection/dataset/EnsembleTrain/progan'
+    freq_opt.dataroot = rel_path('FreqNet_DeepfakeDetection', 'dataset', 'EnsembleTrain', 'progan')
     freq_opt.classes = ['car', 'cat', 'chair', 'horse']
     freq_opt.no_resize = False
     freq_opt.no_crop = True
 
     ll_opt = LLNetOptions().parse(print_options=False)
-    ll_opt.dataroot = '/home/ubuntu/Development/FreqNet_DeepfakeDetection/dataset/EnsembleTrain/progan'
+    ll_opt.dataroot = rel_path('FreqNet_DeepfakeDetection', 'dataset', 'EnsembleTrain', 'progan')
     ll_opt.classes = ['car', 'cat', 'chair', 'horse']
     ll_opt.wavelet_type = 'db1'
     ll_opt.window_size = 32
@@ -108,19 +116,18 @@ def main():
             acc = accuracy_score(Y, preds > 0.5)
             print(f"(Val @ epoch {epoch:03d}) acc: {acc:.3f}; loss: {val_loss:.4f}")
 
-        torch.save(model.state_dict(), f"{save_dir}/epoch_{epoch+1:03d}_model.pth")
+        torch.save(model.state_dict(), os.path.join(save_dir, f"epoch_{epoch+1:03d}_model.pth"))
 
         if val_loss < best_loss:
             best_loss = val_loss
             best_epoch = epoch + 1
-            torch.save(model.state_dict(), f"{save_dir}/best_model_epoch_{best_epoch:03d}.pth")
+            torch.save(model.state_dict(), os.path.join(save_dir, f"best_model_epoch_{best_epoch:03d}.pth"))
 
-        
         if acc >= 0.99:
             print(f"Early stopping triggered at epoch {epoch+1:03d} (accuracy = {acc:.3f} ≥ 0.99)")
             break
 
-    torch.save(model.state_dict(), f"{save_dir}/last_model.pth")
+    torch.save(model.state_dict(), os.path.join(save_dir, "last_model.pth"))
     print(f"Meta-learner trained. Best val loss = {best_loss:.4f} at epoch {best_epoch:03d}. Models saved to {save_dir}")
 
 
