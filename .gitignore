@@ -1,0 +1,11 @@
+**/dataset/
+dataset/
+__pycache__/
+*.pyc
+checkpoints/
+/dataset/*
+!/dataset/.gitkeep
+runs/
+logs/
+.DS_Store
+Thumbs.db

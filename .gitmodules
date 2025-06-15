@@ -1,0 +1,3 @@
+[submodule "FreqNet_DeepfakeDetection"]
+	path = FreqNet_DeepfakeDetection
+	url = git@github.com:henrifola/FreqNet-DeepfakeDetection.git
